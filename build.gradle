@@ -1,125 +1,95 @@
-import me.modmuss50.mpp.ReleaseType
-
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.75'
-    id 'idea'
-    id "me.modmuss50.mod-publish-plugin" version "0.8.4"
+    id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT'
 }
 
 version = mod_version
 group = mod_group_id
 
+base {
+    archivesName = "${mod_id}-fabric-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
 repositories {
     mavenLocal()
-    maven { url = "https://cursemaven.com" }
-    maven { url = "https://harleyoconnor.com/maven" }
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net' }
+    maven { url = 'https://api.modrinth.com/maven' }
+    maven { url = 'https://maven.minecraftforge.net' }
+    maven { url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/' }
 }
 
-base {
-    archivesName = mod_id
+sourceSets.main.java {
+    // Dynamic Trees Plus has no Fabric 26.2 build yet; keep its mushroom-only extension optional and out of this jar.
+    exclude 'com/dtteam/dtbop/DTBOPPlusRegistries.java'
+    exclude 'com/dtteam/dtbop/block/GlowShroomCapProperties.java'
+    exclude 'com/dtteam/dtbop/tree/GlowshroomSpecies.java'
 }
-
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-
-neoForge {
-    version = project.neo_version
-
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.minecraft_version
-    }
-    runs {
-        client {
-            client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        server {
-            server()
-            programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        gameTestServer {
-            type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        data {
-            data()
-            programArguments.addAll '--mod', project.mod_id, '--all',
-                    '--output', file('src/generated/resources/').getAbsolutePath(),
-                    '--existing', file('src/main/resources').getAbsolutePath(),
-                    "--existing-mod", "dynamictrees",
-                    "--existing-mod", "biomesoplenty"
-        }
-
-        // applies to all the run configs above
-        configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-
-            logLevel = org.slf4j.event.Level.DEBUG
-        }
-    }
-    mods {
-        "${mod_id}" {
-            sourceSet sourceSets.main
-        }
-    }
-}
-
-sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
-    //DynamicTrees
-    implementation "com.dtteam.dynamictrees:dynamictrees-neoforge-" + project.minecraft_version + ":" + project.dynamicTreesVersion
-    implementation "com.dtteam.dynamictreesplus:DynamicTreesPlus:" + project.dynamicTreesPlusVersion
-    //implementation "curse.maven:dynamictrees-252818:6111832"
-
-    //DynmaicTrees Tools/Utilities
-    runtimeOnly "curse.maven:jade-324717:6011258"
-    runtimeOnly "curse.maven:jei-238222:5846880"
-    runtimeOnly "curse.maven:cc-tweaked-282001:5714512"
-    runtimeOnly "curse.maven:suggestion-provider-fix-469647:5598604"
-
-    //Biomes O Plenty
-    implementation "curse.maven:terrablender-940057:6054947"
-    implementation "curse.maven:biomes-o-plenty-220318:5855568"
-    implementation "curse.maven:glitchcore-955399:5660740"
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    implementation "com.dtteam.dynamictrees:dynamictrees-fabric-${minecraft_version}:${dynamicTreesVersion}"
+    implementation "maven.modrinth:biomes-o-plenty:${biomesOPlentyArtifactVersion}"
+    runtimeOnly "maven.modrinth:glitchcore:${glitchCoreArtifactVersion}"
+    runtimeOnly "com.github.glitchfiend:TerraBlender-fabric:${minecraft_version}-${terraBlenderVersion}"
 }
 
-def changelogFile = file("build/changelog.txt")
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+    exclude 'trees/dtbop/cap_properties/**'
+    exclude 'trees/dtbop/species/glowshroom.json'
+    exclude 'trees/dtbop/species/toadstool.json'
+    exclude 'data/dtbop/loot_table/blocks/glowshroom_cap.json'
+    exclude 'data/dtbop/loot_table/blocks/toadstool_cap.json'
+    exclude 'data/dtbop/loot_table/trees/mushroom_caps/**'
+    exclude 'data/dtbop/loot_table/trees/voluntary/glowshroom.json'
+    exclude 'data/dtbop/loot_table/trees/voluntary/toadstool.json'
+}
 
-publishMods {
-    file = jar.archiveFile
-    displayName = "${mod_name.replace(' ','')}-NeoForge-${minecraft_version} ${project.version}"
-    if (changelogFile.exists()) {
-        changelog.set(changelogFile.getText())
+processResources {
+    inputs.properties([
+            mod_id: mod_id,
+            mod_name: mod_name,
+            mod_version: mod_version,
+            mod_authors: mod_authors,
+            minecraft_version: minecraft_version,
+            fabric_loader_version: fabric_loader_version,
+            dynamicTreesVersion: dynamicTreesVersion,
+            biomesOPlentyVersion: biomesOPlentyVersion,
+            java_version: 25
+    ])
+    filesMatching('fabric.mod.json') {
+        expand(inputs.properties)
     }
-    type = ReleaseType.of(versionType.toUpperCase())
-    modLoaders.add("neoforge")
+}
 
-    curseforge {
-        projectId = "289529"
-        projectSlug = "dtbop" // Required for discord webhook
-        accessToken = curseApiKey ?: System.getenv("CURSEFORGE_API_KEY")
-        minecraftVersions.add("1.21.1")
-        requires("dynamictrees")
-        requires("biomes-o-plenty")
-        optional("dynamictreesplus")
-    }
-    modrinth {
-        projectId = "8QHjGuhP"
-        accessToken = modrinthToken ?: System.getenv("MODRINTH_TOKEN")
-        minecraftVersions.add("1.21.1")
-        requires("vdjF5PL5") //dt
-        requires("HXF82T3G") //bop
-        optional("qaO9Dqpu") //dt+
+loom {
+    runs {
+        server {
+            server()
+            setConfigName('Fabric Server')
+            runDir('runs/server')
+        }
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
 }
