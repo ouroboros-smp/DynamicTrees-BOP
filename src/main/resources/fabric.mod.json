@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${mod_version}",
+  "name": "${mod_name}",
+  "description": "Dynamic Trees compatibility for Biomes O' Plenty.",
+  "authors": ["${mod_authors}"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "dynamictrees": [
+      "com.dtteam.dtbop.DynamicTreesBOP"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "java": ">=${java_version}",
+    "dynamictrees": ">=${dynamicTreesVersion}",
+    "biomesoplenty": ">=${biomesOPlentyVersion}"
+  }
+}
